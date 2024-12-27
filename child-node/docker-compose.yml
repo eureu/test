@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: . # Сборка на основе Dockerfile в текущей директории
+    container_name: child-node-api
+    environment:
+      - MAIN_NODE_URL=http://localhost:5001 # Адрес Main Node
+      - NODE_ID=child_node_1 # Идентификатор текущего узла
+    depends_on:
+      - ollama
+      - open-webui
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Управление Docker изнутри контейнера
+    restart: always
+    networks:
+      - ollama-webui-network
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434" # Порт ollama
+    restart: always
+    networks:
+      - ollama-webui-network
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434 # URL для ollama
+    volumes:
+      - open-webui:/app/backend/data
+    ports:
+      - "3000:8080" # Порт для open-webui
+    restart: always
+    networks:
+      - ollama-webui-network
+
+volumes:
+  ollama:
+  open-webui:
+
+networks:
+  ollama-webui-network:
