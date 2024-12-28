@@ -141,12 +141,12 @@ async def check_new_models():
 async def handle_client_request(endpoint: str, request: Request):
     """Перенаправлять запросы клиента в Ollama."""
     try:
-        client_payload = await request.json()
+        # client_payload = await request.json()
 
         # endpoint = client_payload.endpoint
         # data = client_payload.data
 
-        response = requests.post(f"{OLLAMA_API_URL}/{endpoint}", json=client_payload)
+        response = requests.post(f"{OLLAMA_API_URL}/{endpoint}", json=request)
         response.raise_for_status()
         return JSONResponse(content=response.json(), status_code=response.status_code)
     except requests.RequestException as e:
