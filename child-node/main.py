@@ -157,7 +157,9 @@ async def handle_client_get_request(endpoint: str, request: Request):
     """Перенаправлять GET-запросы клиента в Ollama."""
     try:
         # Получаем параметры из запроса
-        query_params = dict(request.query_params)
+        # query_params = dict(request.query_params)
+
+        print(request)
 
         # Предполагаем, что клиент передает endpoint как параметр
         # endpoint = query_params.pop("endpoint", None)
@@ -165,7 +167,7 @@ async def handle_client_get_request(endpoint: str, request: Request):
         #     raise HTTPException(status_code=400, detail="Параметр 'endpoint' обязателен")
 
         # Отправляем GET-запрос на Ollama API
-        response = requests.get(f"{OLLAMA_API_URL}/{endpoint}", params=query_params)
+        response = requests.get(f"{OLLAMA_API_URL}/{endpoint}", params=request)
         response.raise_for_status()
 
         return JSONResponse(content=response.json(), status_code=response.status_code)
