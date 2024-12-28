@@ -143,6 +143,8 @@ async def handle_client_request(endpoint: str, request: Request):
     try:
         client_payload = await request.json()
         print(client_payload)
+        print('-----------------')
+        print(f"{OLLAMA_API_URL}/{endpoint}")
         # endpoint = client_payload.endpoint
         # data = client_payload.data
 
