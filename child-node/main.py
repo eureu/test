@@ -137,20 +137,41 @@ async def check_new_models():
 
         await asyncio.sleep(10)
 
-@app.post("/api/")
-async def handle_client_request(request: Request):
+@app.post("/api/{endpoint:path}")
+async def handle_client_request(endpoint: str, request: Request):
     """Перенаправлять запросы клиента в Ollama."""
     try:
         client_payload = await request.json()
 
-        endpoint = client_payload.endpoint
-        data = client_payload.data
+        # endpoint = client_payload.endpoint
+        # data = client_payload.data
 
-        response = requests.post(f"{OLLAMA_API_URL}/{endpoint}", json=data)
+        response = requests.post(f"{OLLAMA_API_URL}/{endpoint}", json=client_payload)
         response.raise_for_status()
         return JSONResponse(content=response.json(), status_code=response.status_code)
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при запросе к Ollama: {e}")
+
+@app.get("/api/{endpoint:path}")
+async def handle_client_get_request(endpoint: str, request: Request):
+    """Перенаправлять GET-запросы клиента в Ollama."""
+    try:
+        # Получаем параметры из запроса
+        query_params = dict(request.query_params)
+
+        # Предполагаем, что клиент передает endpoint как параметр
+        # endpoint = query_params.pop("endpoint", None)
+        # if not endpoint:
+        #     raise HTTPException(status_code=400, detail="Параметр 'endpoint' обязателен")
+
+        # Отправляем GET-запрос на Ollama API
+        response = requests.get(f"{OLLAMA_API_URL}/{endpoint}", params=query_params)
+        response.raise_for_status()
+
+        return JSONResponse(content=response.json(), status_code=response.status_code)
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при запросе к Ollama: {e}")
+
 
 # @app.on_event("startup")
 # async def startup_event():
