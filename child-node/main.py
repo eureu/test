@@ -1,3 +1,4 @@
+from ipaddress import ip_address
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 import requests
@@ -38,21 +39,21 @@ def get_ollama_models():
         print(f"Ошибка при запросе моделей из Ollama: {e}")
         return []
 
-def get_host_ip():
-    # Получаем IP-адрес контейнера
-    container_ip = socket.gethostbyname(socket.gethostname())
+# def get_host_ip():
+#     # Получаем IP-адрес контейнера
+#     container_ip = socket.gethostbyname(socket.gethostname())
     
-    # Получаем IP-адрес хоста через маршрут (по умолчанию это 172.17.0.1)
-    result = subprocess.run(['ip', 'route', 'show'], stdout=subprocess.PIPE)
-    route_info = result.stdout.decode('utf-8')
+#     # Получаем IP-адрес хоста через маршрут (по умолчанию это 172.17.0.1)
+#     result = subprocess.run(['ip', 'route', 'show'], stdout=subprocess.PIPE)
+#     route_info = result.stdout.decode('utf-8')
     
-    # Ищем строку с маршрутом по умолчанию, который указывает на IP хоста
-    for line in route_info.splitlines():
-        if 'default' in line:
-            host_ip = line.split()[2]
-            return host_ip
+#     # Ищем строку с маршрутом по умолчанию, который указывает на IP хоста
+#     for line in route_info.splitlines():
+#         if 'default' in line:
+#             host_ip = line.split()[2]
+#             return host_ip
     
-    return container_ip  # Если не нашли, возвращаем IP контейнера
+#     return container_ip  # Если не нашли, возвращаем IP контейнера
 
 # print(get_host_ip())
 
@@ -63,8 +64,10 @@ def register_with_main_node():
         # node_id = os.getenv("NODE_ID", str(uuid.uuid4()))
         node_id = os.getenv("NODE_ID")
         hostname = socket.gethostname()
+
         # ip_address = socket.gethostbyname(hostname)
-        ip_address = get_host_ip()
+        # ip_address = get_host_ip()
+        ip_address = ''
 
         # Сбор списка моделей и ресурсов
         models = get_ollama_models()
