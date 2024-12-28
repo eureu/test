@@ -6,6 +6,8 @@ from threading import Thread
 import socket
 import uuid
 import os
+from contextlib import asynccontextmanager
+import subprocess
 
 # Конфигурация
 OLLAMA_API_URL = "http://ollama:11434/api"  # Замените <ollama_port> на порт Ollama
@@ -14,7 +16,17 @@ MAIN_NODE_URL = "http://18.215.145.73:5001"  # URL main node для регист
 # Хранение известных моделей
 known_models = set()
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Логика старта приложения
+    print("Запуск приложения")
+    register_with_main_node()
+    asyncio.create_task(check_new_models())
+    yield
+    # Логика завершения приложения (при необходимости)
+    print("Остановка приложения")
+
+app = FastAPI(lifespan=lifespan)
 
 def get_ollama_models():
     """Получить список моделей из Ollama."""
@@ -26,6 +38,24 @@ def get_ollama_models():
         print(f"Ошибка при запросе моделей из Ollama: {e}")
         return []
 
+def get_host_ip():
+    # Получаем IP-адрес контейнера
+    container_ip = socket.gethostbyname(socket.gethostname())
+    
+    # Получаем IP-адрес хоста через маршрут (по умолчанию это 172.17.0.1)
+    result = subprocess.run(['ip', 'route', 'show'], stdout=subprocess.PIPE)
+    route_info = result.stdout.decode('utf-8')
+    
+    # Ищем строку с маршрутом по умолчанию, который указывает на IP хоста
+    for line in route_info.splitlines():
+        if 'default' in line:
+            host_ip = line.split()[2]
+            return host_ip
+    
+    return container_ip  # Если не нашли, возвращаем IP контейнера
+
+# print(get_host_ip())
+
 def register_with_main_node():
     """Зарегистрировать эту child node на main node."""
     try:
@@ -33,12 +63,13 @@ def register_with_main_node():
         # node_id = os.getenv("NODE_ID", str(uuid.uuid4()))
         node_id = os.getenv("NODE_ID")
         hostname = socket.gethostname()
-        ip_address = socket.gethostbyname(hostname)
+        # ip_address = socket.gethostbyname(hostname)
+        ip_address = get_host_ip()
 
         # Сбор списка моделей и ресурсов
         models = get_ollama_models()
-        known_models.update(models)
-
+        model_names = {model["name"] for model in models if "name" in model}
+        known_models.update(model_names)
 
         # resources = {
         #     "cpu": "4 cores",  # Пример, заменить реальными данными
@@ -50,7 +81,7 @@ def register_with_main_node():
             "node_id": node_id,
             "status": "active",
             "resources": {},
-            "models": models,
+            "models": list(model_names),
             "ip": ip_address,
         }
 
@@ -103,7 +134,7 @@ async def check_new_models():
 
         await asyncio.sleep(10)
 
-@app.post("/api")
+@app.post("/api/")
 async def handle_client_request(request: Request):
     """Перенаправлять запросы клиента в Ollama."""
     try:
@@ -118,9 +149,14 @@ async def handle_client_request(request: Request):
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при запросе к Ollama: {e}")
 
-@app.on_event("startup")
-async def startup_event():
-    """Регистрация и запуск проверки новых моделей при старте приложения."""
-    register_with_main_node()
-    # send_ip_to_main_node()
-    asyncio.create_task(check_new_models())
+# @app.on_event("startup")
+# async def startup_event():
+#     """Регистрация и запуск проверки новых моделей при старте приложения."""
+#     register_with_main_node()
+#     # send_ip_to_main_node()
+#     asyncio.create_task(check_new_models())
+
+
+@app.get("/")
+async def read_root():
+    return {"message": "Приложение работает!"}
