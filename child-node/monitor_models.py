@@ -1,67 +1,63 @@
-import os
 import subprocess
 import json
 import requests
 import time
+import os
+import logging
 
-# MAIN_NODE_URL = "http://<main_node_ip>:<port>/register_model"
-MAIN_NODE_URL = os.getenv("MAIN_NODE_URL")
-# OLLAMA_CONTAINER_NAME = "ollama_container"
-OLLAMA_CONTAINER_NAME = os.getenv("OLLAMA_CONTAINER_NAME")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+MAIN_NODE_URL = os.getenv('MAIN_NODE_URL', "http://18.215.145.73:5001")
+OLLAMA_CONTAINER_NAME = os.getenv('OLLAMA_CONTAINER_NAME', "ollama_default_container")
+OLLAMA_API_URL = "http://ollama:11434/api/tags"
 
 
 def get_ollama_models():
-    """Заходит в контейнер с Ollama, выполняет команду `ollama list` и возвращает список моделей."""
     try:
-        result = subprocess.run([
-            "docker", "exec", OLLAMA_CONTAINER_NAME, "ollama", "list"
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if result.returncode != 0:
-            print(f"Error running `ollama list` in container: {result.stderr}")
-            return []
-        return json.loads(result.stdout)
+        response = requests.get(OLLAMA_API_URL)
+        response.raise_for_status()
+        data = response.json()
+        
+        models = [model["name"] for model in data.get("models", [])]
+        logging.info(f"Retrieved models: {models}")
+        return models
+    except requests.RequestException as e:
+        logging.error(f"Error fetching models from Ollama API: {e}")
+        return []
+    except KeyError as e:
+        logging.error(f"Unexpected data format from Ollama API: {e}")
+        return []
     except Exception as e:
-        print(f"Error fetching model list from container: {e}")
+        logging.error(f"Unexpected error: {e}")
         return []
 
-
 def notify_main_node(new_models):
-    """Отправляет список новых моделей на Main Node."""
-    for model in new_models:
-        payload = {"model_name": model}
-        try:
-            response = requests.post(MAIN_NODE_URL, json=payload)
-            if response.status_code == 200:
-                print(f"Model {model} registered successfully with Main Node.")
-            else:
-                print(f"Failed to register model {model}. Response: {response.status_code}, {response.text}")
-        except Exception as e:
-            print(f"Error notifying Main Node about model {model}: {e}")
-
+    payload = {"models": list(new_models)}
+    try:
+        response = requests.post(f'{MAIN_NODE_URL}/register-models', json=payload)
+        response.raise_for_status()
+        logging.info(f"Models registered successfully with Main Node: {new_models}")
+    except requests.RequestException as e:
+        logging.error(f"Failed to register models with Main Node: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error notifying Main Node about models: {e}")
 
 def monitor_ollama_models():
-    """Мониторит изменения в списке моделей Ollama."""
     previous_models = set()
 
     while True:
         current_models = set(get_ollama_models())
 
         if current_models != previous_models:
-            # Определяем новые модели
             new_models = current_models - previous_models
 
             if new_models:
-                print(f"New models detected: {new_models}")
+                logging.info(f"New models detected: {new_models}")
                 notify_main_node(new_models)
 
-            # Можно также обработать удалённые модели, если нужно
             removed_models = previous_models - current_models
             if removed_models:
-                print(f"Models removed: {removed_models}")
+                logging.info(f"Models removed: {removed_models}")
 
         previous_models = current_models
-        time.sleep(10)  # Проверяем каждые 10 секунд
-
-
-if __name__ == "__main__":
-    monitor_ollama_models()
+        time.sleep(10)
