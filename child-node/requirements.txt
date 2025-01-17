@@ -1,8 +1,6 @@
 torch
-torchvision
-transformers
+ultralytics
 accelerate
 fastapi
 uvicorn
 Pillow
-safetensors
