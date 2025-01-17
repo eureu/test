@@ -1,11 +1,14 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
+
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir requests fastapi uvicorn
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py .
+COPY . .
 
-EXPOSE 80
+RUN accelerate config default
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["accelerate", "launch", "app.py"]

@@ -1,53 +1,10 @@
 version: "3.8"
 
 services:
-  api:
-    build:
-      context: .
-    container_name: child-node-api
-    environment:
-      - MAIN_NODE_URL=http://18.215.145.73:5001
-      - NODE_ID=child_node_1
-      - OLLAMA_CONTAINER_NAME=ollama
-    depends_on:
-      - ollama
-      - open-webui
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - ollama-webui-network
+  cv_model:
+    build: .
     ports:
-      - "80:80"
-
-  ollama:
-    image: ollama/ollama
-    container_name: ollama
-    volumes:
-      - ollama:/root/.ollama
-    ports:
-      - "11434:11434"
+      - "8003:8003"
     restart: always
-    networks:
-      - ollama-webui-network
-
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: open-webui
-    depends_on:
-      - ollama
     environment:
-      - OLLAMA_BASE_URL=http://ollama:11434
-    volumes:
-      - open-webui:/app/backend/data
-    ports:
-      - "3000:8080"
-    restart: always
-    networks:
-      - ollama-webui-network
-
-volumes:
-  ollama:
-  open-webui:
-
-networks:
-  ollama-webui-network:
+      - CUDA_VISIBLE_DEVICES=0 # если есть GPU
