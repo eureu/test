@@ -1,5 +1,7 @@
+torch
 ultralytics
 accelerate
 fastapi
 uvicorn
 Pillow
+python-multipart
