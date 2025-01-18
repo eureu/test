@@ -1,7 +1,8 @@
+fastapi
+uvicorn
+pillow
 torch
 ultralytics
 accelerate
-fastapi
-uvicorn
-Pillow
 python-multipart
+opencv-python-headless
